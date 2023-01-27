@@ -1,14 +1,19 @@
 /* Third Party Libraries */
 const bcrypt = require("bcrypt");
+const { check, validationResult } = require("express-validator");
+const bodyValidator = require("express-validator").body;
 /* Third Party Libraries */
 
 /* Helpers */
 const Helper = require("../helpers/helper");
+const { FRIEND_STATUS } = require("../helpers/constant")
+const { checkIdInModel } = require("../helpers/model.helper")
 /* Helpers */
 
 /* Models */
 const BlogModel = require("../models/blog.model");
 const CommentModel = require("../models/comment.model");
+const FriendModel = require("../models/friend.model");
 const UserModel = require("../models/user.model");
 /* Models */
 
@@ -33,6 +38,9 @@ class UserController {
       const user = await UserModel.findOne({
         email,
       });
+      if (!user) {
+        throw new Error('User not found!')
+      }
       const match = bcrypt.compareSync(password, user.password);
       if (!match) {
         throw new Error("invalid_credentials");
@@ -92,14 +100,77 @@ class UserController {
   async getPostComments(req, res) {
     try {
       const post = req.params.post
-      if(!post){
+      if (!post) {
         throw new Error('post id is required')
       }
-      const data = await CommentModel.find({post});
+      const data = await CommentModel.find({ post });
       return Helper.successMessage(res, data);
     } catch (error) {
       console.log(error);
       return Helper.errorMessage(res, error.message);
+    }
+  }
+  //send friend request
+  async sendFriendRequest(req, res) {
+    try {
+      const to = req.params.id
+      const body = {
+        from: req.user._id,
+        to
+      }
+      const data = await new FriendModel(body).save()
+      return Helper.successMessage(res, data)
+    } catch (error) {
+      console.log(error)
+      return Helper.errorMessage(res, error.message)
+    }
+  }
+  //list users
+  async getUsers(req, res) {
+    try {
+      const data = await UserModel.find({}).select('-tokens -password').lean()
+      return Helper.successMessage(res, data)
+    } catch (error) {
+      console.log(error)
+      return Helper.errorMessage(res, error.message)
+    }
+  }
+
+  async getFriendsList(req, res) {
+    try {
+      const user = req.user;
+      let { status } = req.query;
+      if (!status) {
+        status = FRIEND_STATUS.ACCEPTED;
+      }
+      const data = await FriendModel.find({ to: user._id, status });
+      return Helper.successMessage(res, data);
+    } catch (error) {
+      console.log(error);
+      return Helper.errorMessage(res, error.message);
+    }
+  }
+
+  validateUpdateFriendRequestStatus() {
+    return [
+      bodyValidator(['status']).exists().notEmpty().isIn(Object.values(FRIEND_STATUS)),
+      bodyValidator(['id']).exists().notEmpty().isMongoId().custom(checkIdInModel({ model: 'Friend' }))
+    ];
+  }
+
+  async updateFriendRequestStatus(req, res) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return Helper.getValidationErrorMessage(res, errors.array());
+    }
+    try {
+      let { status, id } = req.body
+      const user = req.user
+      const data = await FriendModel.findOneAndUpdate({ _id: id, to: user._id }, {status}, { new: true })
+      return Helper.successMessage(res, data)
+    } catch (error) {
+      console.log(error)
+      return Helper.errorMessage(res, error.message)
     }
   }
 }

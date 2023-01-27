@@ -1,7 +1,7 @@
 require('dotenv')
 const mongoose = require("mongoose");
 const jwt = require("jsonwebtoken");
-
+const exp = Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 30);
 
 const User = new mongoose.Schema(
   {
@@ -41,9 +41,10 @@ const secret = process.env.JWT_SECRET;
 /* generates token */
 User.methods.generateToken = function () {
     let user = this;
+    console.log(exp)
     const token = jwt.sign({
         _id: user._id.toHexString(),
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 30), /// 30 Days
+        exp, /// 30 Days
     }, secret).toString();
 
     user.tokens.push({
@@ -59,7 +60,7 @@ User.methods.generateToken = function () {
 User.statics.refreshToken = function (user) {
     const token = jwt.sign({
         _id: user._id.toHexString(),
-        exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 30), /// 30 Days
+        exp, /// 30 Days
     }, secret).toString();
 
     user.tokens = [{

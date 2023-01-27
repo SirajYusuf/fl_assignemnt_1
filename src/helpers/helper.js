@@ -14,12 +14,24 @@ class Helper {
       },
     });
   }
-  
+
   getAuthErrorMessage(res, data = null) {
     return res.status(401).json({
       status: "fail",
       response: "Unauthorized",
     });
+  }
+
+  getValidationErrorMessage(res, data = null, customObj = null) {
+    console.log(data);
+    let response = {
+      "status": "fail",
+      "response": data ? data : 'invalid parameters'
+    }
+    if (customObj) {
+      response = { ...response, ...customObj };
+    }
+    return res.status(422).json(response);
   }
 }
 
