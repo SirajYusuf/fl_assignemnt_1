@@ -19,12 +19,32 @@ const UserModel = require("../models/user.model");
 
 class UserController {
   //user registration
+  validateRegister() {
+    return [
+      bodyValidator('name').exists(),
+      bodyValidator('phone').exists(),
+      bodyValidator('email').exists().isEmail().normalizeEmail().custom(async (value) => {
+        const isEmailAlreadyRegistered = await UserModel.findOne({ email: value })
+        if (isEmailAlreadyRegistered) {
+          throw new Error('Email already registered')
+        }
+        return true
+      }),
+      bodyValidator('password').exists().isAlphanumeric().isLength({ min: 6, max: 20 }),
+    ]
+  }
+
   async registerUser(req, res) {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return Helper.getValidationErrorMessage(res, errors.array());
+    }
+    const session = req.dbSession
     try {
       const body = req.body;
       body.password = bcrypt.hashSync(body.password, 8);
-      const data = await new UserModel(body).save();
-      await data.generateToken();
+      const data = await new UserModel(body).save({ session });
+      await data.generateToken(session);
       return Helper.successMessage(res, data);
     } catch (error) {
       console.log(error);
@@ -33,11 +53,12 @@ class UserController {
   }
   //user login
   async login(req, res) {
+    const session = req.dbSession
     try {
       let { email, password } = req.body;
-      const user = await UserModel.findOne({
+      let user = await UserModel.findOne({
         email,
-      });
+      }).session(session);
       if (!user) {
         throw new Error('User not found!')
       }
@@ -46,10 +67,10 @@ class UserController {
         throw new Error("invalid_credentials");
       }
       try {
-        await UserModel.findByToken(user.tokens[0].token);
+        user = await UserModel.findByToken(user.tokens[0].token, session);
       } catch (e) {
         if (e.message === "jwt expired") {
-          await UserModel.refreshToken(user);
+          user = await UserModel.refreshToken(user, session);
         }
       }
       return Helper.successMessage(res, user);
@@ -166,7 +187,7 @@ class UserController {
     try {
       let { status, id } = req.body
       const user = req.user
-      const data = await FriendModel.findOneAndUpdate({ _id: id, to: user._id }, {status}, { new: true })
+      const data = await FriendModel.findOneAndUpdate({ _id: id, to: user._id }, { status }, { new: true })
       return Helper.successMessage(res, data)
     } catch (error) {
       console.log(error)

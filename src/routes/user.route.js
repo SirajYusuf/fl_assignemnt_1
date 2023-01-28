@@ -10,7 +10,7 @@ const authMiddle = require("../middlewares/auth");
 /* Authentication */
 
 /*Authorization Routes*/
-Route.post("/user/registration", UserController.registerUser);
+Route.post("/user/registration", UserController.validateRegister(), UserController.registerUser);
 Route.post("/user/login", UserController.login);
 Route.get("/user/list", UserController.getUsers);
 /*End Authorization Routes*/

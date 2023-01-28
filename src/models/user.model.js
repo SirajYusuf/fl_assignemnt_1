@@ -39,9 +39,8 @@ const User = new mongoose.Schema(
 const secret = process.env.JWT_SECRET;
 
 /* generates token */
-User.methods.generateToken = function () {
+User.methods.generateToken = function (session) {
     let user = this;
-    console.log(exp)
     const token = jwt.sign({
         _id: user._id.toHexString(),
         exp, /// 30 Days
@@ -51,13 +50,11 @@ User.methods.generateToken = function () {
         token
     });
 
-    return user.save().then(() => {
-        return user;
-    });
+    return user.save({session});
 };
 
 /* refreshes token if it expires */
-User.statics.refreshToken = function (user) {
+User.statics.refreshToken = function (user, session) {
     const token = jwt.sign({
         _id: user._id.toHexString(),
         exp, /// 30 Days
@@ -67,16 +64,16 @@ User.statics.refreshToken = function (user) {
         token
     }];
 
-    return this.findByIdAndUpdate(user._id, user);
+    return this.findByIdAndUpdate(user._id, user).session(session);
 };
 
-User.statics.findByToken = function (token) {
+User.statics.findByToken = function (token,session) {
     const user = this;
     const decoded = jwt.verify(token, secret);
     return user.findOne({
         "_id": decoded._id,
         "tokens.token": token,
-    });
+    }).session(session);
 };
 
 module.exports = mongoose.model("User", User);
