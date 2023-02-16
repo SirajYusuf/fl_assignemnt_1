@@ -3,6 +3,7 @@ const Route = express.Router();
 
 /* Controllers */
 const UserController = require("../controllers/user.controller");
+const PdfController = require("../controllers/pdf.controller")
 /* Controllers */
 
 /* Authentication */
@@ -24,6 +25,7 @@ Route.get("/user/posts/get-comments/:post", UserController.getPostComments);
 Route.get("/user/friend-request/send/:id", UserController.sendFriendRequest);
 Route.get("/user/friend-request", UserController.getFriendsList);
 Route.post("/user/friend-request", UserController.validateUpdateFriendRequestStatus(), UserController.updateFriendRequestStatus);
+Route.get("/user/download/pdf", PdfController.downloadPdf)
 /*End Post Routes*/
 
 module.exports = Route;
