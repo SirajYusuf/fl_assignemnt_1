@@ -10,6 +10,9 @@ const io = new Server(server);
 const userRoute = require("./routes/user.route")
 const { transaction } = require('./middlewares/dbSession');
 
+var OAuth = require('oauth').OAuth
+var url = require('url')
+
 const port = process.env.PORT || 8080
 
 
@@ -26,15 +29,16 @@ app.get('/chat', (req, res) => {
 io.on('connection', (socket) => {
   console.log('a user connected');
 });
+
 app.use(userRoute)
 
+/**
+ * Failed Routes
+ */
 
 app.get("*", (req, res) => {
   res.status(500).send("Route not found!");
 });
-
-
-
 process.on('uncaughtException', (err) => {
   console.log(err)
 });
